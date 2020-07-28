@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use App\Utils\Constants;
+use App\Helper\Common;
 
 class ESDataController extends Controller
 {
@@ -181,14 +182,18 @@ class ESDataController extends Controller
      */
     public function queryDataWithRawDSL(Request $request)
     {
-        $keyArr   = ['index_name', 'type_name', 'params'];
-        $paramArr = $request->all();
-        $paramArr = array_intersect_key($paramArr, array_flip($keyArr));
+        //$keyArr   = ['index_name', 'type_name', 'params'];
+        $paramArr = $request->getContent();
+        $paramArr = common::formatJson($paramArr);
+        //$paramArr = array_intersect_key($paramArr, array_flip($keyArr));
 
-        if (!isset($paramArr['index_name']) && !isset($paramArr['type_name'])) {
+        if (!isset($paramArr->index_name) && !isset($paramArr->type_name)) {
             return parent::formatResult(-1, 1000, 'Empty index_name or type_name.', '', []);
         }
-        $result = $this->esDataService->queryDataWithRawDSL($paramArr['index_name'], $paramArr['type_name'], $paramArr['params']);
+        if (!isset($paramArr->params)) {
+            return parent::formatResult(-1, 1000, 'Empty raw params.', '', []);
+        }
+        $result = $this->esDataService->queryDataWithRawDSL($paramArr->index_name, $paramArr->type_name, $paramArr->params);
 
         return parent::formatResult($result['code'], 1000, $result['msg'], '', $result['data']);
     }

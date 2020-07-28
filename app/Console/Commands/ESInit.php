@@ -52,7 +52,7 @@ class ESInit extends Command
             'json' => [
                 'template' => config('scout.elasticsearch.index'),
                 'settings' => [
-                    'number_of_shards' => 3
+                    'number_of_shards' => 1
                 ],
                 'mappings' => [
                     '_default_' => [
@@ -65,10 +65,10 @@ class ESInit extends Command
                                     'match_mapping_type' => 'string',
                                     'mapping' => [
                                         'type' => 'text',
-                                        'analyzer' => 'ik_smart',
+                                        'analyzer' => 'ik_max_word',
                                         'ignore_above' => 256,
                                         'fields' => [
-                                            'keyword' => [
+                                            'raw' => [
                                                 'type' => 'keyword'
                                             ]
                                         ]
@@ -90,8 +90,9 @@ class ESInit extends Command
             'json' => [
                 'settings' => [
                     'refresh_interval' => '5s',
-                    'number_of_shards' => 3,
+                    'number_of_shards' => 1,
                     'number_of_replicas' => 1,
+                    'max_result_window' => 100000
                 ],
                 'mappings' => [
                     '_default_' => [

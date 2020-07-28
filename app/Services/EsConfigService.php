@@ -132,9 +132,10 @@ class EsConfigService
             $settings = $paramArr['settings'];
         } else {
             $settings = [
-                'number_of_shards' => 3,
+                'number_of_shards' => 1,
                 'number_of_replicas' => 1,
-                'refresh_interval' => '5s'
+                'refresh_interval' => '5s',
+                'max_result_window' => 100000,
             ];
         }
 
@@ -155,10 +156,11 @@ class EsConfigService
                                 'match_mapping_type' => 'string',
                                 'mapping' => [
                                     'type' => 'text',
-                                    'analyzer' => 'ik_smart',
-                                    'ignore_above' => 256,
+                                    'analyzer' => 'ik_max_word',
+                                    'search_analyzer' => 'ik_max_word',
                                     'fields' => [
-                                        'keyword' => [
+                                        'raw' => [
+                                            'ignore_above' => 256,
                                             'type' => 'keyword'
                                         ]
                                     ]
@@ -261,9 +263,72 @@ class EsConfigService
             $settings = $paramArr['settings'];
         } else {
             $settings = [
-                'number_of_shards' => 3,
+                'number_of_shards' => 1,
                 'number_of_replicas' => 1,
-                'refresh_interval' => '5s'
+                'refresh_interval' => '5s',
+                "analysis" => [
+                    "filter" => [
+                        "pinyin_full_filter" => [
+                            "keep_joined_full_pinyin" => "true",
+                            "lowercase" => "true",
+                            "keep_original" => "false",
+                            "keep_first_letter" => "false",
+                            "keep_separate_first_letter" => "false",
+                            "type" => "pinyin",
+                            "keep_none_chinese" => "false",
+                            "limit_first_letter_length" => "50",
+                            "keep_full_pinyin" => "true"
+                        ],
+                        "pinyin_simple_filter" => [
+                            "keep_joined_full_pinyin" => "true",
+                            "lowercase" => "true",
+                            "none_chinese_pinyin_tokenize" => "false",
+                            "padding_char" => " ",
+                            "keep_original" => "true",
+                            "keep_first_letter" => "true",
+                            "keep_separate_first_letter" => "false",
+                            "type" => "pinyin",
+                            "keep_full_pinyin" => "false"
+                        ]
+                    ],
+                    "analyzer" => [
+                        "pinyinFullIndexAnalyzer" => [
+                            "filter" => [
+                                "asciifolding",
+                                "lowercase",
+                                "pinyin_full_filter"
+                            ],
+                            "type" => "custom",
+                            "tokenizer" => "ik_max_word"
+                        ],
+                        "ik_pinyin_analyzer" => [
+                            "filter" => [
+                                "asciifolding",
+                                "lowercase",
+                                "pinyin_full_filter",
+                                "word_delimiter"
+                            ],
+                            "type" => "custom",
+                            "tokenizer" => "ik_smart"
+                        ],
+                        "ikIndexAnalyzer" => [
+                            "filter" => [
+                                "asciifolding",
+                                "lowercase"
+                            ],
+                            "type" => "custom",
+                            "tokenizer" => "ik_max_word"
+                        ],
+                        "pinyinSimpleIndexAnalyzer" => [
+                            "type" => "custom",
+                            "tokenizer" => "ik_max_word",
+                            "filter" => [
+                                "pinyin_simple_filter",
+                                "lowercase"
+                            ]
+                        ]
+                    ]
+                ]
             ];
         }
 
@@ -284,7 +349,7 @@ class EsConfigService
                                 'mapping' => [
                                     'type' => 'integer',
                                     'fields' => [
-                                        'keyword' => [
+                                        'raw' => [
                                             'type' => 'keyword'
                                         ]
                                     ]
@@ -299,7 +364,7 @@ class EsConfigService
                                 'mapping' => [
                                     'type' => 'float',
                                     'fields' => [
-                                        'keyword' => [
+                                        'raw' => [
                                             'type' => 'keyword'
                                         ]
                                     ]
@@ -312,11 +377,29 @@ class EsConfigService
                                 'match_mapping_type' => 'string',
                                 'mapping' => [
                                     'type' => 'text',
-                                    'analyzer' => 'ik_smart',
-                                    'ignore_above' => 256,
+                                    'analyzer' => 'ik_max_word',
+                                    'search_analyzer' => 'ik_max_word',
                                     'fields' => [
-                                        'keyword' => [
-                                            'type' => 'keyword'
+                                        'raw' => [
+                                            'type' => 'keyword',
+                                            'ignore_above' => 256,
+                                        ]
+                                    ]
+                                ]
+                            ],
+                        ],
+                        [
+                            'py_fields' => [
+                                "match" => '*_py',
+                                'match_mapping_type' => 'string',
+                                'mapping' => [
+                                    'type' => 'text',
+                                    'analyzer' => 'ik_max_word',
+                                    'search_analyzer' => 'ik_max_word',
+                                    'fields' => [
+                                        'raw' => [
+                                            'type' => 'keyword',
+                                            'ignore_above' => 256,
                                         ]
                                     ]
                                 ]
@@ -328,7 +411,8 @@ class EsConfigService
                                 'match_mapping_type' => 'string',
                                 'mapping' => [
                                     'type' => 'text',
-                                    'analyzer' => 'english',
+                                    'analyzer' => 'ik_max_word',
+                                    'search_analyzer' => 'ik_max_word',
                                     'fields' => [
                                         'raw' => [
                                             'type' => 'keyword',
@@ -366,7 +450,7 @@ class EsConfigService
                                 'mapping' => [
                                     'type' => 'geo_point',
                                     'location' => [
-                                        'keyword' => [
+                                        'raw' => [
                                             'type' => 'geo_point'
                                         ]
                                     ]
@@ -375,8 +459,278 @@ class EsConfigService
                         ],
                     ],
                     'properties' => [
-                        "location" => [
-                            "type" => "geo_point"
+                        'location' => [
+                            'type' => 'geo_point'
+                        ],
+                        'name_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' => 50
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'name_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' => 50
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'city_name_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' => 50
+                                ]
+                            ],
+                            'analyzer' => 'standard'
+                        ],
+                        'city_name_py' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'city_name_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'province_name_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'province_name_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'country_name_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'country_name_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'continent_name_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'address_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'address_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'hotel_business_district_cn' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
+                        ],
+                        'hotel_business_district_en' => [
+                            'type' => 'text',
+                            'fields' => [
+                                'fpy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinFullIndexAnalyzer'
+                                ],
+                                'spy' => [
+                                    'type' => 'text',
+                                    'index' => true,
+                                    'analyzer' => 'pinyinSimpleIndexAnalyzer'
+                                ],
+                                'raw' => [
+                                    'type' => 'keyword',
+                                    'ignore_above' =>250
+                                ]
+                            ],
+                            'analyzer' => 'ikIndexAnalyzer'
                         ]
                     ]
                 ]

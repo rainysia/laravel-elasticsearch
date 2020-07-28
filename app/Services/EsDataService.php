@@ -442,7 +442,7 @@ class EsDataService
     /**
      * Build DSL.
      *
-     * @param array $params Params.  ["query", "filter", "page", "sort", "return"]
+     * @param array $params Params.  ["query", "filter", "page", "sort", "return", "highlight", "need_accurate"]
      [
         "query":{
             "key":[
@@ -473,6 +473,8 @@ class EsDataService
                 "distance": 5km
             }
         },
+        "highlight": true,
+        "need_accurate": true,
         "page":{
             "cur_page":1,
             "page_size":6
@@ -498,6 +500,7 @@ class EsDataService
     private function buildDSL($params)
     {
         $new = [];
+        $highlights = [];
 
         // Query Related
         /*
@@ -509,20 +512,28 @@ class EsDataService
          */
         if (isset($params['query']) && isset($params['query']['value']) && isset($params['query']['key'])) {
             $query = $params['query'];
+            // Accurate needed
+            /*
+                'need_accurate' => true,
+             */
+            $op = (isset($params['need_accurate']) && $params['need_accurate'] == true) ? 'and' : 'or';
+
             if (count($query['key']) > 1) {
                 $new['query']['multi_match'] = [
                     'query'    => $query['value'],
                     'type'     => 'best_fields',
-                    'operator' => 'or',
+                    'operator' => $op,
                     'fields'   => $query['key'],
                 ];
+                $highlights = $query['key'];
             } else {
                 $new['query']['match'] = [
                     $query['key'][0] => [
                         'query' => $query['value'],
-                        'operator' => 'or'
+                        'operator' => $op
                     ]
                 ];
+                $highlights = [$query['key'][0]];
             }
             unset($query);
         }
@@ -599,6 +610,32 @@ class EsDataService
             unset($filter);
         }
 
+        // Highlight related
+        /*
+         'highlight' => true,
+        */
+        if (isset($params['highlight']) && $params['highlight'] == true) {
+            if (count($highlights) > 0) {
+                $new['highlight'] = [
+                    'fields' => array_map(
+                        function ($high) {
+                            $high = (object)[];
+                            return $high;
+                        },
+                        array_flip($highlights)
+                    ),
+                    'pre_tags' => [
+                        '<em class="cls_es_blue" style="color:#0090f2">',
+                    ],
+                    'post_tags' => [
+                        '</em>',
+                    ]
+                ];
+            }
+            unset($highlights);
+        }
+
+
         // Pagination Related
         /*
         'page' =>
@@ -625,7 +662,7 @@ class EsDataService
                 if (intval($page['cur_page']) <= 1) {
                     $new['from'] = 0;
                 } else {
-                    $new['from'] = intval($page['cur_page']) * $new['size'];
+                    $new['from'] = (intval($page['cur_page']) - 1) * $new['size'];
                 }
             }
 
@@ -643,7 +680,7 @@ class EsDataService
         */
         if (isset($params['sort'])) {
             // geo related sort
-            if (count($params['sort'][0]) > 1 && isset($params['sort'][0]['geo']) && count($geo) > 0) {
+            if (count($params['sort'][0]) >= 1 && isset($params['sort'][0]['geo']) && count($geo) > 0) {
                 unset($geo['distance']);
                 // Keep the sort sequence
                 $params['sort'][0] = array_reverse($params['sort'][0]);
