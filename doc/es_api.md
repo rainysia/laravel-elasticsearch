@@ -281,9 +281,9 @@ Return:
 ------
 | Param         | Type  |       DESC        | Required  |
 |---------------:|:-----:|:-----------------:|:---------:|
-| index_name |string | index name      | must |
+| - |- | -      | - |
 
-Method:`Post`
+Method:`GET`
 URL:`config/ik`
 Data:
 ```
@@ -303,7 +303,7 @@ Return:
 ------
 | Param         | Type  |       DESC        | Required  |
 |---------------:|:-----:|:-----------------:|:---------:|
-| index_name |string | index name      | must |
+| key_word |string | multiple string via comma     | must, Need to add into ES ik folder manually |
 
 Method:`GET`
 URL:`config/ik/add?key_word=四川宾馆,成都宾馆`
@@ -382,7 +382,7 @@ Return:
 | data      |array  | data array, id must by as key     | must |
 
 Method:`POST`
-URL:`/data/insert`
+URL:`/data/bulk`
 Data:
 ```
 {
@@ -459,7 +459,7 @@ Return:
 | type_name  |string  | type name | must |
 | id      |integer  | doc id   | must |
 
-Method:`POST`
+Method:`GET`
 URL:`/data/{index_name}/{type_name}/{id}`
 Data:
 ```
