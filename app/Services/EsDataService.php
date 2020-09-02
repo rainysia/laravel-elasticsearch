@@ -678,21 +678,33 @@ class EsDataService
                 [ 'key2' => "asc" ]
             ]
         */
-        if (isset($params['sort'])) {
-            // geo related sort
-            if (count($params['sort'][0]) >= 1 && isset($params['sort'][0]['geo']) && count($geo) > 0) {
-                unset($geo['distance']);
-                // Keep the sort sequence
-                $params['sort'][0] = array_reverse($params['sort'][0]);
-                $params['sort'][0]['_geo_distance'] = array_merge($geo, [
-                    'order' => isset($params['sort'][0]['geo']) ? $params['sort'][0]['geo'] : 'asc',
-                    'unit' => 'km',
-                ]);
-                unset($params['sort'][0]['geo']);
-                unset($geo);
-                $params['sort'][0] = array_reverse($params['sort'][0]);
+        if (isset($params['sort']) && count($params['sort']) > 0) {
+            $keyExists = [
+                'geo' => false
+            ];
+            foreach ($params['sort'] as $no => $sub_sort) {
+                if (count($sub_sort) > 0) {
+                    foreach ($sub_sort as $sortKey => $sortSeq) {
+                        // geo related sort
+                        if (!isset($keyExists[$sortKey]) || $keyExists[$sortKey] == false) {
+                            if ($sortKey == 'geo') {
+                                //unset($geo['distance']);
+                                $new['sort'][$no]['_geo_distance'] = array_merge($geo, [
+                                    'order' => ($sub_sort['geo'] == 'desc') ? 'desc' : 'asc',
+                                    'unit' => 'km',
+                                ]);
+                                unset($geo);
+                            } else {
+                                $new['sort'][$no][$sortKey] = [
+                                    'order' => ($sortSeq == 'desc') ? 'desc' : 'asc',
+                                ];
+                            }
+                            $keyExists[$sortKey] = true;
+                        }
+                    }
+                }
             }
-            $new['sort'] = $params['sort'];
+            unset($geo, $keyExists);
         } else {
             $new['sort'] = [
                 '_score' => 'desc',
